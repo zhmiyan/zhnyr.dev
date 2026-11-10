@@ -1,0 +1,103 @@
+/* fable-5-1 / style.css — tokens + shared primitives (page layout lives in page.css) */
+:root {
+  --bg: #060a14;
+  --bg2: #0b1226;
+  --surface: #0f172c;
+  --surface2: #16213d;
+  --line: rgba(150, 178, 255, 0.14);
+  --line2: rgba(150, 178, 255, 0.28);
+  --ink: #e9efff;
+  --muted: #8d9cc4;
+  --faint: #5b6890;
+  --accent: #4f8cff;
+  --accent2: #a9d2ff;
+  --gem: #2c5cff;
+  --warm: #ffd9a8;
+  --ok: #6fe3b4;
+  --danger: #ff7d9c;
+
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-body: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 22px;
+}
+
+* { box-sizing: border-box; }
+html { color-scheme: dark; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 16px/1.6 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+.mono { font-family: var(--font-mono); font-size: 0.86em; }
+
+/* ---- stage: the box every demo lives in ------------------------------- */
+.stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  min-height: 320px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  isolation: isolate;
+  touch-action: none;
+}
+.stage canvas { display: block; width: 100%; height: 100%; }
+.stage canvas.pointer { cursor: pointer; }
+.stage canvas.grab { cursor: grab; }
+.stage canvas.grabbing { cursor: grabbing; }
+.stage-fail {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  color: var(--muted); padding: 24px; text-align: center;
+}
+@media (max-width: 640px) {
+  .stage { aspect-ratio: 4 / 5; }
+}
+
+/* ---- hud: a small control bar overlaid on a stage -------------------- */
+.hud {
+  position: absolute; left: 12px; bottom: 12px; z-index: 2;
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  max-width: calc(100% - 24px);
+}
+.hud.top-right { left: auto; right: 12px; bottom: auto; top: 12px; }
+.hud.top-left { bottom: auto; top: 12px; }
+.hud .note { color: var(--muted); font-size: 12.5px; font-family: var(--font-mono); }
+
+.btn {
+  appearance: none; border: 1px solid var(--line2); background: rgba(10, 16, 34, 0.78);
+  color: var(--ink); font: 600 13px/1 var(--font-body); letter-spacing: 0.01em;
+  padding: 10px 14px; min-height: 36px; border-radius: 999px; cursor: pointer;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  transition: border-color .15s, background .15s, transform .08s;
+}
+.btn:hover { border-color: var(--accent); background: rgba(20, 32, 70, 0.9); }
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #061024; }
+.btn.primary:hover { background: var(--accent2); border-color: var(--accent2); }
+.btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #061024; }
+.btn.sm { padding: 7px 11px; min-height: 30px; font-size: 12px; }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: 999px; font: 600 12px/1 var(--font-mono);
+  background: rgba(10, 16, 34, 0.78); border: 1px solid var(--line); color: var(--muted);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.chip b { color: var(--ink); font-weight: 600; }
+.kbd {
+  font: 600 11px/1 var(--font-mono); padding: 3px 6px; border-radius: 5px;
+  border: 1px solid var(--line2); border-bottom-width: 2px; color: var(--ink);
+  background: var(--surface2);
+}
+input[type="range"] { accent-color: var(--accent); }
+::selection { background: rgba(79, 140, 255, 0.35); }

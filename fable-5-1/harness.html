@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fable harness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Manrope:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="src/style.css">
+<style>
+  body { padding: 32px; }
+  .wrap { max-width: 960px; margin: 0 auto; }
+  h1 { font: 500 28px/1.2 var(--font-display); margin: 0 0 16px; }
+  .err { color: var(--danger); font-family: var(--font-mono); white-space: pre-wrap; margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="t">harness</h1>
+  <div class="stage" id="stage"></div>
+  <pre class="err" id="err"></pre>
+</div>
+<script src="src/core.js"></script>
+<script>
+  const name = new URLSearchParams(location.search).get('demo') || 'hero';
+  document.getElementById('t').textContent = `harness · ${name}`;
+  const stage = document.getElementById('stage');
+  stage.dataset.demo = name;
+  window.addEventListener('error', (e) => { document.getElementById('err').textContent += (e.message || e) + '\n'; });
+  window.addEventListener('unhandledrejection', (e) => { document.getElementById('err').textContent += (e.reason && e.reason.stack || e.reason) + '\n'; });
+  const s = document.createElement('script');
+  s.src = `src/demos/${name}.js`;
+  s.onload = () => { FABLE.boot(); };
+  s.onerror = () => { document.getElementById('err').textContent = `could not load src/demos/${name}.js`; };
+  document.body.appendChild(s);
+</script>
+</body>
+</html>

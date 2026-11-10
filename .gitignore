@@ -1,0 +1,5 @@
+.DS_Store
+*.log
+__pycache__/
+fable-5-1/index.html
+fable-5-1/build.json
