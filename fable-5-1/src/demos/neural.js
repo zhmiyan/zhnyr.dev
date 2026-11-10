@@ -1,12 +1,13 @@
 /* fable-5-1 / demos/neural.js — a neural network trained live in the browser, no libraries.
  * A 2→24→24→1 MLP (tanh hidden units, sigmoid output) stored as flat Float32Arrays with a
  * hand-written forward pass and backprop (binary cross-entropy), optimised with Adam on
- * minibatches of 32 drawn from 2D toy datasets. Each frame trains for a ~5 ms time budget
- * (so the step count adapts to the machine and the page keeps 60 fps), then evaluates the net
- * on a few rows of a coarse 96×60 grid (~4 ms) and upscales that ImageData with drawImage.
+ * minibatches of 32 drawn from 2D toy datasets. Each frame spends a CPU budget (2–9 ms,
+ * adapted to the measured frame interval so the page holds ~60 fps) on training steps plus a
+ * slice of the decision field: a coarse 96×60 grid upscaled with drawImage smoothing.
  */
 (() => {
-  const H = 24, BATCH = 32, MAX_STEPS = 64, STEP_BUDGET_MS = 5, FIELD_BUDGET_MS = 4, GRID = 96;
+  const H = 24, BATCH = 32, MAX_STEPS = 64, GRID = 96;
+  const BUDGET_MIN = 2, BUDGET_MAX = 9; // ms of CPU work per frame (train + field), adapts to frame rate
   const DATASETS = ['two spirals', 'rings', 'xor', 'moons'];
   const COL = { blue: '#4f8cff', peach: '#ffd9a8' };
   // field colours: deep blue (class 0) · dark neutral seam at p=0.5 · muted peach (class 1)
@@ -289,17 +290,27 @@
       accV.textContent = (stats.acc * 100).toFixed(1) + '%';
     }
 
-    // ---- frame loop: train (time-budgeted steps) → field slice (time-budgeted) → draw
-    const timing = { train: 0, field: 0, draw: 0 };
+    // ---- frame loop: train (time-budgeted steps) → field slice (time-budgeted) → draw.
+    // The work budget adapts to the measured frame interval so slower machines (or
+    // software rasterisers) trade steps/second for a steady frame rate rather than jank.
+    const timing = { train: 0, field: 0, draw: 0, budget: 6, dt: 16.7 };
+    let lastNow = 0;
     function frame(now) {
       raf = requestAnimationFrame(frame);
+      if (lastNow) {
+        const dt = Math.min(100, now - lastNow);
+        timing.dt += (dt - timing.dt) * 0.1;
+        if (timing.dt > 19) timing.budget = Math.max(BUDGET_MIN, timing.budget * 0.93);
+        else if (timing.dt < 17.5) timing.budget = Math.min(BUDGET_MAX, timing.budget * 1.03);
+      }
+      lastNow = now;
       const t0 = performance.now();
       if (playing) {
-        let n = 0;
-        while (n < MAX_STEPS && (n < 2 || performance.now() - t0 < STEP_BUDGET_MS)) { step(net, pts, lr); n++; }
+        const trainUntil = t0 + timing.budget * 0.6; let n = 0;
+        while (n < MAX_STEPS && (n < 2 || performance.now() < trainUntil)) { step(net, pts, lr); n++; }
         stepsPerFrame = n; timing.train = performance.now() - t0;
         const t1 = performance.now();
-        if (computeField(FIELD_BUDGET_MS)) refreshStats();
+        if (computeField(timing.budget * 0.4)) refreshStats();
         timing.field = performance.now() - t1; fieldDirty = false; drawDirty = true;
       } else if (fieldDirty) { // paused: a point was added or the net reset → one full sweep
         fieldRow = 0; computeField(Infinity); refreshStats();
@@ -314,7 +325,7 @@
       stepsPerFrame: () => stepsPerFrame, points: () => pts.length, timing: () => ({ ...timing }),
     };
     return {
-      resume() { if (!raf) raf = requestAnimationFrame(frame); },
+      resume() { if (!raf) { lastNow = 0; raf = requestAnimationFrame(frame); } },
       pause() { if (raf) cancelAnimationFrame(raf); raf = 0; },
       destroy() { this.pause(); ro.disconnect(); el.innerHTML = ''; delete window.__neural; },
     };

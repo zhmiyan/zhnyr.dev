@@ -37,16 +37,17 @@
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
       return f;
     };
+    const drain = () => { for (let i = 0; i < 16 && gl.getError(); i++) { /* clear stale errors so the probe is meaningful */ } };
     let fmt = null;
     for (const c of cands) {
       if (c.exts.length && !c.exts.some((n) => gl.getExtension(n))) continue;
-      while (gl.getError()) { /* drain stale errors so the probe below is meaningful */ }
+      drain();
       const t = makeTex(c, 4, 4), f = makeFbo(t);
       const ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE && gl.getError() === gl.NO_ERROR;
       gl.deleteFramebuffer(f); gl.deleteTexture(t);
       if (ok) { fmt = c; break; }
     }
-    while (gl.getError()) { /* drain */ }
+    drain();
     if (!fmt) throw new Error('no renderable texture format');
 
     // ---- shaders (GLSL ES 1.00 so the same source runs on WebGL1 and WebGL2) ----
@@ -227,8 +228,8 @@
     }
 
     // ---- sizing: canvas at dpr ≤ 1.5, simulation at half the canvas pixels, capped at 1024×640 ----
-    const scale = FABLE.dpr(1.5);
     function resize() {
+      const scale = FABLE.dpr(1.5);
       const w = Math.max(1, Math.floor(el.clientWidth * scale)), h = Math.max(1, Math.floor(el.clientHeight * scale));
       if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; dirty = true; }
       const s = Math.min(0.5, 1024 / w, 640 / h);

@@ -51,17 +51,17 @@ const int NB = 3;       // internal bounces per colour channel
 // a soft-edged disc light on the sky dome
 float disc(vec3 d, vec3 L, float c, float s) { return smoothstep(c - s, c + s, dot(d, L)); }
 
-// procedural jewellery-studio environment: mostly dark, one big softbox, one hot pinpoint, a cool rim, a warm card.
-// high contrast is what makes facets flip between deep blue and blazing white as the stone turns.
+// procedural jewellery-studio environment: a soft grey-blue dome bright enough that every facet shows body colour,
+// plus a big softbox, a hot pinpoint, a cool rim and a warm card so facets flip to blazing white as the stone turns.
 vec3 env(vec3 d) {
   float h = d.y;
-  vec3 c = mix(vec3(0.004, 0.006, 0.016), vec3(0.05, 0.10, 0.26), smoothstep(-0.4, 1.0, h));
-  c += vec3(0.03, 0.06, 0.16) * pow(max(0.0, 1.0 - abs(h)), 6.0);                                 // horizon haze
+  vec3 c = mix(vec3(0.06, 0.08, 0.13), vec3(0.55, 0.62, 0.78), smoothstep(-0.9, 1.0, h));
+  c += vec3(0.25, 0.30, 0.40) * pow(max(0.0, 1.0 - abs(h)), 4.0);                                 // bright horizon band
   c += vec3(1.00, 0.97, 0.92) * 5.0  * disc(d, normalize(vec3(-0.50, 0.70, 0.50)), 0.940, 0.020);  // key softbox
   c += vec3(1.00, 1.00, 1.00) * 40.0 * disc(d, normalize(vec3(0.60, 0.60, 0.55)), 0.995, 0.004);   // hot pinpoint
   c += vec3(0.70, 0.84, 1.00) * 4.0  * disc(d, normalize(vec3(0.90, 0.20, -0.30)), 0.970, 0.015);  // cool rim
-  c += vec3(1.00, 0.78, 0.58) * 1.2  * disc(d, normalize(vec3(0.20, -0.70, 0.60)), 0.900, 0.060);  // warm bounce card
-  c += vec3(0.80, 0.90, 1.00) * 0.8  * disc(d, normalize(vec3(-0.30, 0.30, -1.00)), 0.750, 0.200); // broad back fill
+  c += vec3(1.00, 0.78, 0.58) * 1.5  * disc(d, normalize(vec3(0.20, -0.70, 0.60)), 0.900, 0.060);  // warm bounce card
+  c += vec3(0.80, 0.90, 1.00) * 1.0  * disc(d, normalize(vec3(-0.30, 0.30, -1.00)), 0.750, 0.200); // broad back fill
   return c;
 }
 
@@ -109,7 +109,7 @@ void main() {
   // backdrop: page-navy gradient, a faint gem-blue halo, a soft pool of scattered light under the stone
   float r2 = dot(uv, uv);
   vec3 col = mix(vec3(0.004, 0.008, 0.024), vec3(0.010, 0.020, 0.052), clamp(uv.y * 0.6 + 0.5, 0.0, 1.0));
-  col += vec3(0.17, 0.36, 1.0) * 0.045 * exp(-r2 * 1.6);
+  col += vec3(0.17, 0.36, 1.0) * 0.035 * exp(-r2 * 1.6);
   vec2 pool = uv - vec2(0.0, -0.78 + uBob * 0.5);
   col += vec3(0.25, 0.45, 1.0) * 0.05 * exp(-(pool.x * pool.x * 2.0 + pool.y * pool.y * 28.0));
   col *= 1.0 - 0.5 * smoothstep(0.4, 2.6, r2);
@@ -121,10 +121,11 @@ void main() {
   if (b * b - cc > 0.0 && enter(roo, rdo, tN, n)) {
     vec3 p = roo + rdo * tN;
     float cosI = -dot(rdo, n);
-    vec3 acc = env(reflect(rdo, n) * uInv) * fres(cosI, 1.0, 1.77); // outer mirror reflection (v*M == transpose(M)*v)
+    vec3 acc = env(reflect(rdo, n) * uInv) * fres(cosI, 1.0, 1.77) * vec3(0.85, 0.92, 1.0); // outer mirror reflection (v*M == transpose(M)*v)
     for (int c = 0; c < 3; c++) {
       float ior = c == 0 ? 1.752 : (c == 1 ? 1.770 : 1.800);         // dispersion, slightly exaggerated
-      float k   = c == 0 ? 2.40  : (c == 1 ? 1.10  : 0.10);          // absorption per unit path: sapphire blue
+      float k   = c == 0 ? 2.20  : (c == 1 ? 1.20  : 0.25);          // Beer-Lambert absorption per unit path: sapphire blue
+      float body = c == 0 ? 0.40 : (c == 1 ? 0.62 : 1.00);           // body tint so even the shortest paths read blue
       vec3 mask = vec3(c == 0 ? 1.0 : 0.0, c == 1 ? 1.0 : 0.0, c == 2 ? 1.0 : 0.0);
       float thr = 1.0 - fres(cosI, 1.0, ior);
       vec3 d = refract(rdo, n, 1.0 / ior), q = p;
@@ -139,7 +140,7 @@ void main() {
         d = reflect(d, nx);
       }
       sum += thr * exp(-k * dist) * dot(env(d * uInv), mask) * 0.6; // energy still trapped after NB bounces
-      acc += mask * sum;
+      acc += mask * sum * body;
     }
     col = acc;
   }
@@ -206,7 +207,7 @@ void main() {
       }
 
       // ---- state -----------------------------------------------------------------------------------------------------
-      const HOME_PITCH = 0.55, AUTO_SPIN = 0.22; // rad, rad/s
+      const HOME_PITCH = 0.62, AUTO_SPIN = 0.22; // rad, rad/s
       let yaw = 0.6, pitch = HOME_PITCH, spinVel = 0, pitchVel = 0;
       let dragging = false, pointerId = null, lastX = 0, lastY = 0, lastMoveT = 0;
       let raf = 0, visible = false, lost = false;
